@@ -1,0 +1,7 @@
+filelock>=3.13
+pyyaml>=6.0
+typer>=0.12
+langgraph>=0.2.0
+
+[dev]
+pytest>=8.0

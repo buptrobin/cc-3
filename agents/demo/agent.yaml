@@ -1,0 +1,6 @@
+agent_id: demo
+model: null
+# Claude CLI permission mode (passed as --permission-mode)
+permission_mode: dontAsk
+# Policy preset: safe | dev | open
+policy_preset: safe

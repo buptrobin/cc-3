@@ -1,0 +1,8 @@
+{
+  "instruction": "Reply with exactly: pong",
+  "session_id_before": null,
+  "session_id_after": null,
+  "fork": false,
+  "timed_out": false,
+  "exit_code": 1
+}
