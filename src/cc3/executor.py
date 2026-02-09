@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .claude_cmd import build_claude_argv
-from .config import AgentConfig, env_for_claude, load_dotenv
+from .config import AgentConfig, env_for_claude, load_dotenv, merge_env
 from .events import normalize_event
 from .locking import acquire_workspace_lock
 from .stream_parser import iter_stream_json_lines
@@ -118,7 +118,11 @@ class ClaudeCliExecutor:
             append_system_prompt=append_system_prompt,
         )
 
-        dotenv = load_dotenv(workspace / ".env")
+        # Provide Anthropic/Claude auth via env vars. We support both a repo-root
+        # `.env` (shared across workspaces) and a per-workspace `.env` override.
+        dotenv_repo = load_dotenv(self._repo_root / ".env")
+        dotenv_ws = load_dotenv(workspace / ".env")
+        dotenv = merge_env(dotenv_repo, dotenv_ws)
         env = env_for_claude(dotenv=dotenv)
 
         started_at = _now_utc()
@@ -178,6 +182,7 @@ class ClaudeCliExecutor:
                     invocation.argv,
                     cwd=str(workspace),
                     env=env,
+                    stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
                     stderr=stderr_f,
                     text=True,
@@ -187,6 +192,14 @@ class ClaudeCliExecutor:
 
                 t = threading.Thread(target=reader_thread, args=(proc,))
                 t.start()
+
+                # `claude -p/--print` requires the prompt via argv or stdin.
+                # We use stdin to avoid quoting/length issues and keep argv stable.
+                assert proc.stdin is not None
+                proc.stdin.write(invocation.prompt)
+                if not invocation.prompt.endswith("\n"):
+                    proc.stdin.write("\n")
+                proc.stdin.close()
 
                 try:
                     exit_code = proc.wait(timeout=self._timeout_s)
@@ -206,6 +219,12 @@ class ClaudeCliExecutor:
             final_text = result_text if result_text is not None else "".join(deltas)
             sid_after = session_id_after
             aks = api_key_source
+
+        # If the CLI failed before emitting any streaming output, surface stderr.
+        if exit_code != 0 and not final_text.strip():
+            stderr_text = _read_text_file(stderr_path)
+            if stderr_text:
+                final_text = stderr_text.strip()
 
         result_path.write_text(final_text, encoding="utf-8")
 

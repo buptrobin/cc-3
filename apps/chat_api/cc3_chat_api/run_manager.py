@@ -86,9 +86,13 @@ class RunManager:
 
             finished_at = time.time()
 
+            state = "completed" if result.exit_code == 0 and not result.timed_out else "failed"
+
             # Persist assistant message + session update under lock.
             h2 = acquire_workspace_lock(req.workspace, timeout_s=10.0)
             try:
+                # Even on failure, write something user-visible (stderr fallback is
+                # handled in the executor when no stream output is produced).
                 append_message(
                     req.workspace,
                     {
@@ -99,20 +103,23 @@ class RunManager:
                         "run_id": req.run_id,
                     },
                 )
-                save_session_id(req.workspace, result.session_id_after, last_run_id=req.run_id)
-                write_run_status(
-                    req.workspace,
-                    req.run_id,
-                    {
-                        "run_id": req.run_id,
-                        "state": "completed",
-                        "started_at": started_at,
-                        "finished_at": finished_at,
-                        "exit_code": result.exit_code,
-                        "timed_out": result.timed_out,
-                        "session_id_after": result.session_id_after,
-                    },
-                )
+
+                if state == "completed":
+                    save_session_id(req.workspace, result.session_id_after, last_run_id=req.run_id)
+
+                status_obj: dict[str, Any] = {
+                    "run_id": req.run_id,
+                    "state": state,
+                    "started_at": started_at,
+                    "finished_at": finished_at,
+                    "exit_code": result.exit_code,
+                    "timed_out": result.timed_out,
+                    "session_id_after": result.session_id_after,
+                }
+                if state == "failed":
+                    status_obj["error"] = "claude CLI exited non-zero"
+
+                write_run_status(req.workspace, req.run_id, status_obj)
             finally:
                 h2.release()
 

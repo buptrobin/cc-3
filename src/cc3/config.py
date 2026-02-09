@@ -115,8 +115,12 @@ def merge_env(base: dict[str, str], override: dict[str, str]) -> dict[str, str]:
 
 
 def env_for_claude(*, dotenv: dict[str, str]) -> dict[str, str]:
-    """Return process env for spawning `claude`, merging current env + .env values."""
+    """Return process env for spawning `claude`.
+
+    Precedence: existing process env wins; .env values fill in missing keys.
+    """
 
     env = dict(os.environ)
-    env.update(dotenv)
+    for k, v in dotenv.items():
+        env.setdefault(k, v)
     return env

@@ -63,7 +63,6 @@ def build_claude_argv(
     if append_system_prompt:
         argv.extend(["--append-system-prompt", append_system_prompt])
 
-    # The prompt is a positional argument.
-    argv.append(prompt)
-
+    # Provide the prompt via stdin (more robust than a positional arg when
+    # options like --tools accept multiple values).
     return ClaudeInvocation(argv=argv, prompt=prompt)

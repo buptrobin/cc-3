@@ -37,7 +37,13 @@ async def _tail_events_ndjson(events_path: Path, status_path: Path) -> AsyncIter
         if events_path.exists():
             with events_path.open("r", encoding="utf-8", errors="replace") as f:
                 f.seek(offset)
-                for line in f:
+                # Avoid mixing file iteration (`for line in f`) with tell(); on
+                # some platforms/Python versions that raises:
+                # "OSError: telling position disabled by next() call".
+                while True:
+                    line = f.readline()
+                    if not line:
+                        break
                     offset = f.tell()
                     line = line.rstrip("\n")
                     if not line:
