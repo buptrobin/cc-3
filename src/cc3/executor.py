@@ -108,6 +108,13 @@ class ClaudeCliExecutor:
             *cfg.add_dirs,
         ]
 
+        # Allow access to the bundled job-manager skill scripts if present.
+        # This lets server-run sessions execute the same helper scripts as the
+        # interactive CLI (e.g. query-jobs.py).
+        jm_skill_dir = Path.home() / ".claude" / "skills" / "job-manager"
+        if jm_skill_dir.exists():
+            add_dirs.append(jm_skill_dir)
+
         invocation = build_claude_argv(
             prompt=instruction,
             cfg=cfg,

@@ -48,3 +48,6 @@ pnpm-debug.log*
 
 # OS
 .DS_Store
+
+# others
+**/conversations/

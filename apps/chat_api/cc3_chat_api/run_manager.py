@@ -79,7 +79,7 @@ class RunManager:
                 session_id=session_id,
                 run_id=req.run_id,
                 fork=False,
-                run_cfg=RunConfig(policy_preset="safe", permission_mode="dontAsk"),
+                run_cfg=RunConfig(policy_preset="open", permission_mode="bypassPermissions"),
                 timeout_s=600.0,
                 lock_timeout_s=30.0,
             )
